@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FTC Pick List Builder</title>
+  <!-- CSV Parsing Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- Excel Parsing Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --accent-soft: rgba(56, 189, 248, 0.1);
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      background-color: var(--accent);
+      color: #000;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+      font-size: 0.9rem;
+    }
+
+    .btn:hover {
+      background-color: var(--accent-hover);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--border-color);
+      color: var(--text-main);
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .panel {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      align-items: end;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    select, input[type="number"] {
+      background-color: var(--bg-color);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 6px;
+      outline: none;
+      font-size: 0.9rem;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--accent);
+    }
+
+    .desc-box {
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 8px 12px;
+      border-radius: 6px;
+      border-left: 3px solid var(--accent);
+    }
+
+    .weights-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px 24px;
+      margin-top: 12px;
+    }
+
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      max-height: 500px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background-color: var(--card-bg);
+      position: sticky;
+      top: 0;
+      color: var(--text-muted);
+      font-weight: 600;
+      z-index: 10;
+    }
+
+    tr:hover {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .tag {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .tag-fit { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+    .tag-role { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+
+    .status-bar {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>⚡ FTC Pick List Builder</h1>
+    <div style="display: flex; gap: 10px;">
+      <div class="file-input-wrapper">
+        <button class="btn">Import CSV / Excel</button>
+        <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" onchange="handleFileUpload(event)">
+      </div>
+    </div>
+  </header>
+
+  <div class="panel">
+    <div class="panel-title">Alliance Strategy</div>
+    <div class="controls-grid">
+      <div class="control-group">
+        <label for="archetypeSelect">Our Archetype</label>
+        <select id="archetypeSelect" onchange="onArchetypeChange()">
+          <!-- Populated by JS -->
+        </select>
+      </div>
+      <div class="control-group">
+        <label for="excludeSelect">Exclude Team</label>
+        <select id="excludeSelect" onchange="generateList()">
+          <option value="">None</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label for="picksCount">Picks to Show</label>
+        <input type="number" id="picksCount" value="12" min="1" max="50" onchange="generateList()">
+      </div>
+      <div>
+        <button class="btn" style="width: 100%;" onclick="generateList()">Generate Pick List</button>
+      </div>
+    </div>
+    <div class="desc-box" id="archetypeDesc">
+      Select an archetype to automatically configure model weights.
+    </div>
+  </div>
+
+  <div class="panel">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div class="panel-title" style="margin: 0;">Model Weights</div>
+      <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="resetWeights()">Reset Defaults</button>
+    </div>
+    <div class="weights-grid" id="weightsGrid">
+      <!-- Sliders populated by JS -->
+    </div>
+  </div>
+
+  <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 60px; text-align: center;">Pick</th>
+            <th style="width: 90px;">Team</th>
+            <th style="width: 80px;">Fit</th>
+            <th style="width: 100px;">Role</th>
+            <th style="width: 70px;">Scoring</th>
+            <th style="width: 70px;">Auto</th>
+            <th style="width: 80px;">Endgame</th>
+            <th style="width: 90px;">Reliability</th>
+            <th>Why</th>
+          </tr>
+        </thead>
+        <tbody id="pickTableBody">
+          <tr>
+            <td colspan="9" class="empty-state">
+              Import your scouting spreadsheet (CSV or XLSX) to begin ranking alliance candidates.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <span id="statusText">Awaiting dataset...</span>
+  </div>
+
+  <script>
+    const ARCHETYPES = {
+      "Balanced": {
+        weights: { scoring: 24, auto: 16, endgame: 14, reliability: 18, defense: 8, passing: 8, driver: 6, mobility: 6 },
+        overlap: 0.08,
+        description: "A little of everything; favors complete, reliable partners."
+      },
+      "Primary Scorer": {
+        weights: { scoring: 10, auto: 10, endgame: 18, reliability: 20, defense: 14, passing: 14, driver: 8, mobility: 6 },
+        overlap: 0.20,
+        description: "Your robot supplies scoring. The model strongly favors complementary support."
+      },
+      "Support / Feeder": {
+        weights: { scoring: 24, auto: 16, endgame: 14, reliability: 16, defense: 8, passing: 4, driver: 10, mobility: 8 },
+        overlap: 0.05,
+        description: "Your robot supports scoring; favors high-output scorers."
+      },
+      "Defender": {
+        weights: { scoring: 28, auto: 12, endgame: 14, reliability: 18, defense: 3, passing: 8, driver: 10, mobility: 7 },
+        overlap: 0.03,
+        description: "Your robot plays defense; favors offensive and autonomous capability."
+      },
+      "Auto Specialist": {
+        weights: { scoring: 28, auto: 5, endgame: 18, reliability: 20, defense: 8, passing: 8, driver: 7, mobility: 6 },
+        overlap: 0.10,
+        description: "Your robot's biggest edge is autonomous; favors teleop/endgame partners."
+      },
+      "Endgame Specialist": {
+        weights: { scoring: 27, auto: 15, endgame: 5, reliability: 20, defense: 10, passing: 8, driver: 9, mobility: 6 },
+        overlap: 0.08,
+        description: "Your robot owns the endgame; favors strong scoring and reliable teleop."
+      }
+    };
+
+    const WEIGHT_LABELS = {
+      scoring: "Scoring",
+      auto: "Auto",
+      endgame: "Endgame",
+      reliability: "Reliability",
+      defense: "Defense",
+      passing: "Passing / Feeding",
+      driver: "Driver Skill",
+      mobility: "Mobility"
+    };
+
+    let rawData = null;
+    let activeWeights = { ...ARCHETYPES["Primary Scorer"].weights };
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const archSelect = document.getElementById("archetypeSelect");
+      Object.keys(ARCHETYPES).forEach(arch => {
+        const opt = document.createElement("option");
+        opt.value = arch;
+        opt.innerText = arch;
+        if (arch === "Primary Scorer") opt.selected = true;
+        archSelect.appendChild(opt);
+      });
+
+      renderWeightSliders();
+      onArchetypeChange();
+    });
+
+    function renderWeightSliders() {
+      const grid = document.getElementById("weightsGrid");
+      grid.innerHTML = "";
+
+      Object.keys(WEIGHT_LABELS).forEach(key => {
+        const div = document.createElement("div");
+        div.className = "slider-group";
+        div.innerHTML = `
+          <div class="slider-header">
+            <span>${WEIGHT_LABELS[key]}</span>
+            <span id="val-${key}">${activeWeights[key]}%</span>
+          </div>
+          <input type="range" id="slider-${key}" min="0" max="50" value="${activeWeights[key]}" oninput="onSliderChange('${key}', this.value)">
+        `;
+        grid.appendChild(div);
+      });
+    }
+
+    function onArchetypeChange() {
+      const selected = document.getElementById("archetypeSelect").value;
+      const arch = ARCHETYPES[selected];
+      document.getElementById("archetypeDesc").innerText = arch.description;
+
+      activeWeights = { ...arch.weights };
+      Object.keys(activeWeights).forEach(key => {
+        const slider = document.getElementById(`slider-${key}`);
+        const valSpan = document.getElementById(`val-${key}`);
+        if (slider) slider.value = activeWeights[key];
+        if (valSpan) valSpan.innerText = activeWeights[key] + "%";
+      });
+
+      if (rawData) generateList();
+    }
+
+    function resetWeights() {
+      onArchetypeChange();
+    }
+
+    function onSliderChange(key, val) {
+      activeWeights[key] = parseFloat(val);
+      document.getElementById(`val-${key}`).innerText = val + "%";
+      if (rawData) generateList();
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const fileName = file.name.toLowerCase();
+      if (fileName.endsWith(".csv")) {
+        Papa.parse(file, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: (results) => processData(results.data)
+        });
+      } else if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          let sheetName = workbook.SheetNames[0];
+          for (let s of workbook.SheetNames) {
+            const sheet = workbook.Sheets[s];
+            const json = XLSX.utils.sheet_to_json(sheet);
+            if (json.length > 0 && json[0].hasOwnProperty("Team")) {
+              sheetName = s;
+              break;
+            }
+          }
+          const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+          processData(jsonData);
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    }
+
+    function processData(data) {
+      if (!data || data.length === 0 || !data[0].hasOwnProperty("Team")) {
+        alert("Invalid file format. Please ensure your dataset includes a 'Team' column.");
+        return;
+      }
+
+      rawData = data;
+
+      const excludeSelect = document.getElementById("excludeSelect");
+      excludeSelect.innerHTML = '<option value="">None</option>';
+      const teams = Array.from(new Set(data.map(d => d.Team))).filter(Boolean).sort((a,b) => a - b);
+      teams.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t;
+        opt.innerText = t;
+        excludeSelect.appendChild(opt);
+      });
+
+      document.getElementById("statusText").innerText = `Loaded ${data.length} records.`;
+      generateList();
+    }
+
+    function safeNum(val) {
+      const n = parseFloat(val);
+      return isNaN(n) ? 0 : n;
+    }
+
+    function meanCols(row, cols) {
+      let sum = 0, count = 0;
+      cols.forEach(c => {
+        if (row.hasOwnProperty(c)) {
+          sum += safeNum(row[c]);
+          count++;
+        }
+      });
+      return count > 0 ? sum / count : 0;
+    }
+
+    function normSeries(data, col) {
+      const vals = data.map(d => safeNum(d[col]));
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      if (max - min < 1e-9) return data.map(() => 50);
+      return vals.map(v => ((v - min) / (max - min)) * 100);
+    }
+
+    function generateList() {
+      if (!rawData) return;
+
+      const currentArch = document.getElementById("archetypeSelect").value;
+      const excludeTeam = document.getElementById("excludeSelect").value;
+      const topN = parseInt(document.getElementById("picksCount").value) || 12;
+
+      const fuelNorm = normSeries(rawData, "Fuel Scored");
+      const speedNorm = normSeries(rawData, "Shooting Speed");
+      const accuracyNorm = normSeries(rawData, "Shooting Accuracy");
+      const driverNorm = normSeries(rawData, "Driver Ability");
+      const defenseNorm = normSeries(rawData, "Defense Effectiveness");
+
+      const scoringCols = ["Primary Scorer", "Shooting", "Cycling", "Shooting From Anywhere", "Shooting From Close", "Shooting From Far", "Shooting From Corners", "Shooting From Tower", "Shooting From Bump", "Shooting From Trench"];
+      const autoCols = ["Preload", "Single Swipe", "Double Swipe", "Depot", "Outpost", "Auto Climb Status", "Shoots On The Move", "Steals Fuel", "Triple Steal"];
+      const endgameCols = ["L1", "L2", "L3"];
+      const passingCols = ["Passing", "Full Field Passing", "Feeding H P"];
+      const mobilityCols = ["Fast Robot", "Goes Behind Tower", "Unbeached Quick"];
+      const defenseCols = ["Defending", "Defense Effectiveness", "Steals Fuel"];
+      const failureCols = ["Auto Failed", "Auto Beached", "Delayed Auto", "Beached On Fuel", "Beached On Bump", "Bumper Fell Off", "Browning Out", "Immobile", "Turned Off", "Shooter Jammed", "Intake Jammed", "Intake Broke", "Other Break", "No Show", "Climb Failed"];
+
+      let scoredData = rawData.map((row, idx) => {
+        const scoringFlags = meanCols(row, scoringCols) * 100;
+        const autoFlags = meanCols(row, autoCols) * 100;
+        const positiveEndgame = meanCols(row, endgameCols) * 100;
+        const passing = meanCols(row, passingCols) * 100;
+        const mobility = meanCols(row, mobilityCols) * 100;
+        const defense = meanCols(row, defenseCols) * 100;
+        const fail = meanCols(row, failureCols);
+
+        const _scoring = Math.min(100, Math.max(0, 0.55 * scoringFlags + 0.20 * fuelNorm[idx] + 0.15 * accuracyNorm[idx] + 0.10 * speedNorm[idx]));
+        const _auto = Math.min(100, Math.max(0, 0.70 * autoFlags + 0.20 * fuelNorm[idx] + 0.10 * accuracyNorm[idx]));
+        const _endgame = Math.min(100, Math.max(0, positiveEndgame));
+        const _reliability = Math.min(100, Math.max(0, 100 - fail * 100));
+        const _defense = Math.min(100, Math.max(0, 0.65 * defense + 0.35 * defenseNorm[idx]));
+        const _passing = Math.min(100, Math.max(0, passing));
+        const _driver = Math.min(100, Math.max(0, driverNorm[idx]));
+        const _mobility = Math.min(100, Math.max(0, mobility));
+
+        const _overall = (
+          0.30 * _scoring + 0.12 * _auto + 0.12 * _endgame +
+          0.20 * _reliability + 0.08 * _defense + 0.07 * _passing +
+          0.06 * _driver + 0.05 * _mobility
+        );
+
+        return {
+          Team: String(row.Team),
+          _scoring, _auto, _endgame, _reliability,
+          _defense, _passing, _driver, _mobility, _overall
+        };
+      });
+
+      if (excludeTeam) {
+        scoredData = scoredData.filter(d => d.Team !== excludeTeam);
+      }
+
+      const wSum = Object.values(activeWeights).reduce((a, b) => a + b, 0) || 1;
+      const w = {};
+      Object.keys(activeWeights).forEach(k => w[k] = activeWeights[k] / wSum);
+
+      const archConfig = ARCHETYPES[currentArch];
+      const overlapFactor = archConfig ? archConfig.overlap : 0.08;
+
+      scoredData.forEach(d => {
+        const base = (
+          w.scoring * d._scoring + w.auto * d._auto +
+          w.endgame * d._endgame + w.reliability * d._reliability +
+          w.defense * d._defense + w.passing * d._passing +
+          w.driver * d._driver + w.mobility * d._mobility
+        );
+
+        let overlapMetric = d._overall;
+        if (currentArch === "Primary Scorer") overlapMetric = d._scoring;
+        else if (currentArch === "Support / Feeder") overlapMetric = d._passing;
+        else if (currentArch === "Defender") overlapMetric = d._defense;
+        else if (currentArch === "Auto Specialist") overlapMetric = d._auto;
+        else if (currentArch === "Endgame Specialist") overlapMetric = d._endgame;
+
+        const reliabilityGuard = 0.65 + 0.35 * (d._reliability / 100);
+        let fit = (base - overlapFactor * overlapMetric) * reliabilityGuard + 0.04 * d._overall;
+
+        d._fit = Math.min(100, Math.max(0, fit));
+
+        const roleVals = {
+          "Scorer": d._scoring,
+          "Auto": d._auto,
+          "Endgame": d._endgame,
+          "Defense": d._defense,
+          "Passing": d._passing
+        };
+        d._role = Object.keys(roleVals).reduce((a, b) => roleVals[a] > roleVals[b] ? a : b);
+
+        const reasons = [];
+        const caps = [
+          { label: "scoring", val: d._scoring },
+          { label: "auto", val: d._auto },
+          { label: "endgame", val: d._endgame },
+          { label: "reliability", val: d._reliability },
+          { label: "defense", val: d._defense },
+          { label: "passing", val: d._passing },
+          { label: "driver skill", val: d._driver },
+          { label: "mobility", val: d._mobility }
+        ].sort((a, b) => b.val - a.val);
+
+        caps.slice(0, 3).forEach(c => {
+          if (c.val >= 65) reasons.push(`strong ${c.label} (${Math.round(c.val)})`);
+        });
+
+        if (d._reliability < 55) reasons.push(`reliability concern (${Math.round(d._reliability)})`);
+
+        if (currentArch === "Primary Scorer" && d._scoring >= 70) reasons.push("adds scoring without replacing your role");
+        if (currentArch === "Defender" && d._scoring >= 70) reasons.push("adds offense to a defense-first alliance");
+        if (currentArch === "Support / Feeder" && d._scoring >= 70) reasons.push("adds the scoring your archetype needs");
+        if (currentArch === "Auto Specialist" && d._scoring >= 70) reasons.push("adds teleop scoring to your auto strength");
+        if (currentArch === "Endgame Specialist" && d._scoring >= 70) reasons.push("adds scoring around your endgame");
+
+        d._why = reasons.slice(0, 4).join("; ") || "balanced profile";
+      });
+
+      scoredData.sort((a, b) => b._fit !== a._fit ? b._fit - a._fit : b._overall - a._overall);
+      const results = scoredData.slice(0, topN);
+
+      renderTable(results);
+      document.getElementById("statusText").innerText = `Pick list generated for archetype: ${currentArch} (${results.length} candidates shown).`;
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById("pickTableBody");
+      tbody.innerHTML = "";
+
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="empty-state">No matching teams found.</td></tr>`;
+        return;
+      }
+
+      data.forEach((r, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td style="text-align: center; font-weight: bold; color: var(--text-muted);">${idx + 1}</td>
+          <td style="font-weight: 600;">${r.Team}</td>
+          <td><span class="tag tag-fit">${r._fit.toFixed(1)}</span></td>
+          <td><span class="tag tag-role">${r._role}</span></td>
+          <td>${Math.round(r._scoring)}</td>
+          <td>${Math.round(r._auto)}</td>
+          <td>${Math.round(r._endgame)}</td>
+          <td>${Math.round(r._reliability)}</td>
+          <td style="color: var(--text-muted); font-size: 0.85rem;">${r._why}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
