@@ -293,20 +293,21 @@
       <table>
         <thead>
           <tr>
-            <th style="width: 60px; text-align: center;">Pick</th>
-            <th style="width: 90px;">Team</th>
-            <th style="width: 80px;">Fit</th>
-            <th style="width: 100px;">Role</th>
-            <th style="width: 70px;">Scoring</th>
-            <th style="width: 70px;">Auto</th>
-            <th style="width: 80px;">Endgame</th>
-            <th style="width: 90px;">Reliability</th>
+            <th style="width: 50px; text-align: center;">Pick</th>
+            <th style="width: 80px;">Team #</th>
+            <th style="width: 140px;">Team Name</th>
+            <th style="width: 70px;">Fit</th>
+            <th style="width: 90px;">Role</th>
+            <th style="width: 65px;">Scoring</th>
+            <th style="width: 65px;">Auto</th>
+            <th style="width: 75px;">Endgame</th>
+            <th style="width: 85px;">Reliability</th>
             <th>Why</th>
           </tr>
         </thead>
         <tbody id="pickTableBody">
           <tr>
-            <td colspan="9" class="empty-state">
+            <td colspan="10" class="empty-state">
               Import your scouting spreadsheet (CSV or XLSX) to begin ranking alliance candidates.
             </td>
           </tr>
@@ -446,7 +447,7 @@
           for (let s of workbook.SheetNames) {
             const sheet = workbook.Sheets[s];
             const json = XLSX.utils.sheet_to_json(sheet);
-            if (json.length > 0 && json[0].hasOwnProperty("Team")) {
+            if (json.length > 0 && (json[0].hasOwnProperty("Team Number") || json[0].hasOwnProperty("Team"))) {
               sheetName = s;
               break;
             }
@@ -459,8 +460,8 @@
     }
 
     function processData(data) {
-      if (!data || data.length === 0 || !data[0].hasOwnProperty("Team")) {
-        alert("Invalid file format. Please ensure your dataset includes a 'Team' column.");
+      if (!data || data.length === 0) {
+        alert("The uploaded file appears to be empty.");
         return;
       }
 
@@ -468,7 +469,8 @@
 
       const excludeSelect = document.getElementById("excludeSelect");
       excludeSelect.innerHTML = '<option value="">None</option>';
-      const teams = Array.from(new Set(data.map(d => d.Team))).filter(Boolean).sort((a,b) => a - b);
+      
+      const teams = Array.from(new Set(data.map(d => d["Team Number"] || d["Team"] || d["Team Name"]))).filter(Boolean);
       teams.forEach(t => {
         const opt = document.createElement("option");
         opt.value = t;
@@ -549,15 +551,19 @@
           0.06 * _driver + 0.05 * _mobility
         );
 
+        const teamNumber = String(row["Team Number"] || row["Team"] || "N/A");
+        const teamName = String(row["Team Name"] || row["Name"] || "");
+
         return {
-          Team: String(row.Team),
+          TeamNumber: teamNumber,
+          TeamName: teamName,
           _scoring, _auto, _endgame, _reliability,
           _defense, _passing, _driver, _mobility, _overall
         };
       });
 
       if (excludeTeam) {
-        scoredData = scoredData.filter(d => d.Team !== excludeTeam);
+        scoredData = scoredData.filter(d => d.TeamNumber !== excludeTeam && d.TeamName !== excludeTeam);
       }
 
       const wSum = Object.values(activeWeights).reduce((a, b) => a + b, 0) || 1;
@@ -614,12 +620,6 @@
 
         if (d._reliability < 55) reasons.push(`reliability concern (${Math.round(d._reliability)})`);
 
-        if (currentArch === "Primary Scorer" && d._scoring >= 70) reasons.push("adds scoring without replacing your role");
-        if (currentArch === "Defender" && d._scoring >= 70) reasons.push("adds offense to a defense-first alliance");
-        if (currentArch === "Support / Feeder" && d._scoring >= 70) reasons.push("adds the scoring your archetype needs");
-        if (currentArch === "Auto Specialist" && d._scoring >= 70) reasons.push("adds teleop scoring to your auto strength");
-        if (currentArch === "Endgame Specialist" && d._scoring >= 70) reasons.push("adds scoring around your endgame");
-
         d._why = reasons.slice(0, 4).join("; ") || "balanced profile";
       });
 
@@ -635,7 +635,7 @@
       tbody.innerHTML = "";
 
       if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="empty-state">No matching teams found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="empty-state">No matching teams found.</td></tr>`;
         return;
       }
 
@@ -643,7 +643,8 @@
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td style="text-align: center; font-weight: bold; color: var(--text-muted);">${idx + 1}</td>
-          <td style="font-weight: 600;">${r.Team}</td>
+          <td style="font-weight: 600;">${r.TeamNumber}</td>
+          <td style="color: var(--text-muted);">${r.TeamName}</td>
           <td><span class="tag tag-fit">${r._fit.toFixed(1)}</span></td>
           <td><span class="tag tag-role">${r._role}</span></td>
           <td>${Math.round(r._scoring)}</td>
