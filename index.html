@@ -160,13 +160,11 @@
       renderWeightSliders();
       onArchetypeChange();
 
-      // Load saved dataset if available
       const savedData = localStorage.getItem("ftc_scouting_data");
       if (savedData) {
         try {
           rawData = JSON.parse(savedData);
           processData(rawData, false);
-          document.getElementById("statusText").innerText = `Restored ${rawData.length} records from local storage.`;
         } catch (e) {
           localStorage.removeItem("ftc_scouting_data");
         }
@@ -237,6 +235,30 @@
       }
     }
 
+    function getTeamNum(row) {
+      for (let k in row) {
+        const key = k.trim().toLowerCase();
+        if (key === "team #" || key === "team number" || key === "teamnum" || key === "teamno") {
+          return row[k];
+        }
+      }
+      for (let k in row) {
+        const key = k.trim().toLowerCase();
+        if (key === "team") return row[k];
+      }
+      return "N/A";
+    }
+
+    function getTeamName(row) {
+      for (let k in row) {
+        const key = k.trim().toLowerCase();
+        if (key === "team name" || key === "name" || key === "teamname") {
+          return row[k];
+        }
+      }
+      return "";
+    }
+
     function processData(data, saveToStorage = true) {
       if (!data || data.length === 0) return;
 
@@ -266,27 +288,6 @@
       document.getElementById("pickTableBody").innerHTML = `<tr><td colspan="10" class="empty-state">Data cleared. Import a new spreadsheet.</td></tr>`;
       document.getElementById("statusText").innerText = "Awaiting dataset...";
       document.getElementById("excludeSelect").innerHTML = '<option value="">None</option>';
-    }
-
-    // Strict search helpers for Team Number and Team Name
-    function getTeamNum(row) {
-      for (let k in row) {
-        const key = k.trim().toLowerCase();
-        if (key === "team number" || key === "team #" || key === "teamnum" || key === "teamno" || key === "team") {
-          return row[k];
-        }
-      }
-      return "N/A";
-    }
-
-    function getTeamName(row) {
-      for (let k in row) {
-        const key = k.trim().toLowerCase();
-        if (key === "team name" || key === "name" || key === "teamname") {
-          return row[k];
-        }
-      }
-      return "";
     }
 
     function safeNum(val) {
@@ -354,7 +355,7 @@
       });
 
       if (excludeTeam) {
-        scoredData = scoredData.filter(d => d.TeamNumber !== excludeTeam);
+        scoredData = scoredData.filter(d => d.TeamNumber !== String(excludeTeam));
       }
 
       const wSum = Object.values(activeWeights).reduce((a, b) => a + b, 0) || 1;
