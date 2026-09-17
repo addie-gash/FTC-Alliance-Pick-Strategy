@@ -235,34 +235,27 @@
       }
     }
 
-    // Smart Identifier extraction that separates long text from numerical team numbers
+    // Force strictly numeric identifiers into 'Team #' and any text into 'Team Name'
     function getTeamInfo(row) {
+      let candidateNum = "";
+      let candidateName = "";
+
       const keys = Object.keys(row);
-      let rawColA = keys.length > 0 ? String(row[keys[0]] || "").trim() : "";
-      let rawColB = keys.length > 1 ? String(row[keys[1]] || "").trim() : "";
-
-      // Check header matches
       for (let k of keys) {
-        const clean = k.replace(/[^a-zA-Z0-9#]/g, '').toLowerCase();
-        if (clean === 'team#' || clean === 'teamnumber' || clean === 'teamnum' || clean === 'teamno') {
-          if (row[k]) rawColA = String(row[k]).trim();
-        }
-        if (clean === 'teamname' || clean === 'name' || clean === 'robotname') {
-          if (row[k]) rawColB = String(row[k]).trim();
-        }
-      }
+        const val = String(row[k] || "").trim();
+        if (!val) continue;
 
-      // If Column A contains a long school/team name instead of a number
-      if (isNaN(Number(rawColA)) && rawColA.length > 5) {
-        return {
-          number: rawColB && !isNaN(Number(rawColB)) ? rawColB : "TBD",
-          name: rawColA
-        };
+        // Valid team numbers are purely digits (1 to 5 digits long)
+        if (/^\d{1,5}$/.test(val) && !candidateNum) {
+          candidateNum = val;
+        } else if (val.length > 1 && !candidateName) {
+          candidateName = val;
+        }
       }
 
       return {
-        number: rawColA || "TBD",
-        name: rawColB
+        number: candidateNum || "TBD",
+        name: candidateName || ""
       };
     }
 
