@@ -235,27 +235,35 @@
       }
     }
 
-    // Direct Positional Extraction (Guarantees Column A = Team #, Column B = Team Name)
-    function getTeamNum(row) {
+    // Smart Identifier extraction that separates long text from numerical team numbers
+    function getTeamInfo(row) {
       const keys = Object.keys(row);
-      // Try finding by header match first
+      let rawColA = keys.length > 0 ? String(row[keys[0]] || "").trim() : "";
+      let rawColB = keys.length > 1 ? String(row[keys[1]] || "").trim() : "";
+
+      // Check header matches
       for (let k of keys) {
         const clean = k.replace(/[^a-zA-Z0-9#]/g, '').toLowerCase();
-        if (clean === 'team#' || clean === 'teamnumber' || clean === 'teamnum' || clean === 'teamno') return row[k];
+        if (clean === 'team#' || clean === 'teamnumber' || clean === 'teamnum' || clean === 'teamno') {
+          if (row[k]) rawColA = String(row[k]).trim();
+        }
+        if (clean === 'teamname' || clean === 'name' || clean === 'robotname') {
+          if (row[k]) rawColB = String(row[k]).trim();
+        }
       }
-      // Fallback: Use 1st column (Column A)
-      return keys.length > 0 ? row[keys[0]] : "N/A";
-    }
 
-    function getTeamName(row) {
-      const keys = Object.keys(row);
-      // Try finding by header match first
-      for (let k of keys) {
-        const clean = k.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-        if (clean === 'teamname' || clean === 'name' || clean === 'robotname') return row[k];
+      // If Column A contains a long school/team name instead of a number
+      if (isNaN(Number(rawColA)) && rawColA.length > 5) {
+        return {
+          number: rawColB && !isNaN(Number(rawColB)) ? rawColB : "TBD",
+          name: rawColA
+        };
       }
-      // Fallback: Use 2nd column (Column B)
-      return keys.length > 1 ? row[keys[1]] : "";
+
+      return {
+        number: rawColA || "TBD",
+        name: rawColB
+      };
     }
 
     function processData(data, saveToStorage = true) {
@@ -269,7 +277,7 @@
       const excludeSelect = document.getElementById("excludeSelect");
       excludeSelect.innerHTML = '<option value="">None</option>';
       
-      const teams = Array.from(new Set(data.map(d => getTeamNum(d)))).filter(Boolean);
+      const teams = Array.from(new Set(data.map(d => getTeamInfo(d).number))).filter(Boolean);
       teams.forEach(t => {
         const opt = document.createElement("option");
         opt.value = t;
@@ -334,6 +342,7 @@
       const failureCols = ["Auto Failed", "Auto Beached", "Delayed Auto", "Beached On Fuel", "Beached On Bump", "Bumper Fell Off", "Browning Out", "Immobile", "Turned Off", "Shooter Jammed", "Intake Jammed", "Intake Broke", "Other Break", "No Show", "Climb Failed"];
 
       let scoredData = rawData.map((row, idx) => {
+        const info = getTeamInfo(row);
         const _scoring = Math.min(100, Math.max(0, 0.55 * (meanCols(row, scoringCols) * 100) + 0.20 * fuelNorm[idx] + 0.15 * accuracyNorm[idx] + 0.10 * speedNorm[idx]));
         const _auto = Math.min(100, Math.max(0, 0.70 * (meanCols(row, autoCols) * 100) + 0.20 * fuelNorm[idx] + 0.10 * accuracyNorm[idx]));
         const _endgame = Math.min(100, Math.max(0, meanCols(row, endgameCols) * 100));
@@ -346,8 +355,8 @@
         const _overall = (0.30 * _scoring + 0.12 * _auto + 0.12 * _endgame + 0.20 * _reliability + 0.08 * _defense + 0.07 * _passing + 0.06 * _driver + 0.05 * _mobility);
 
         return {
-          TeamNumber: String(getTeamNum(row)),
-          TeamName: String(getTeamName(row)),
+          TeamNumber: info.number,
+          TeamName: info.name,
           _scoring, _auto, _endgame, _reliability, _defense, _passing, _driver, _mobility, _overall
         };
       });
