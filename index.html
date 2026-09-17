@@ -85,7 +85,7 @@
       </div>
       <div class="control-group">
         <label for="picksCount">Picks to Show</label>
-        <input type="number" id="picksCount" value="12" min="1" max="50" onchange="generateList()">
+        <input type="number" id="picksCount" value="100" min="1" max="999" onchange="generateList()">
       </div>
       <div>
         <button class="btn" style="width: 100%;" onclick="generateList()">Generate Pick List</button>
@@ -235,7 +235,6 @@
       }
     }
 
-    // Force strictly numeric identifiers into 'Team #' and any text into 'Team Name'
     function getTeamInfo(row) {
       let candidateNum = "";
       let candidateName = "";
@@ -245,7 +244,6 @@
         const val = String(row[k] || "").trim();
         if (!val) continue;
 
-        // Valid team numbers are purely digits (1 to 5 digits long)
         if (/^\d{1,5}$/.test(val) && !candidateNum) {
           candidateNum = val;
         } else if (val.length > 1 && !candidateName) {
@@ -318,7 +316,7 @@
       if (!rawData) return;
 
       const excludeTeam = document.getElementById("excludeSelect").value;
-      const topN = parseInt(document.getElementById("picksCount").value) || 12;
+      const topN = parseInt(document.getElementById("picksCount").value) || rawData.length;
 
       const fuelNorm = normSeries(rawData, "Fuel Scored");
       const speedNorm = normSeries(rawData, "Shooting Speed");
